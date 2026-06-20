@@ -1,0 +1,73 @@
+name: Fork Image (GHCR)
+
+# Fork-only image build for gentslava/hermes-agent. Manual dispatch so it never
+# runs on upstream and never appears in feature-branch PRs (the file lives only
+# on the fork's default branch). Builds the requested ref and pushes it to
+# ghcr.io/gentslava/hermes-agent. workflow_dispatch must live on the default
+# branch to be dispatchable, so this stays on `main` and checks out `inputs.ref`.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref (branch/tag/SHA) to build"
+        required: true
+        default: feat/system-messages-i18n
+      tag:
+        description: "Image tag to publish (in addition to sha-<short>)"
+        required: true
+        default: i18n
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ghcr-fork-${{ github.event.inputs.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/gentslava/hermes-agent
+
+jobs:
+  build-push:
+    # Never run on upstream; only on the fork.
+    if: github.repository == 'gentslava/hermes-agent'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout requested ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+
+      - name: Resolve checked-out SHA
+        id: vars
+        run: |
+          echo "sha_full=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.event.inputs.tag }}
+            ${{ env.IMAGE }}:sha-${{ steps.vars.outputs.sha_short }}
+          build-args: |
+            HERMES_GIT_SHA=${{ steps.vars.outputs.sha_full }}
+          cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE }}:buildcache,mode=max
