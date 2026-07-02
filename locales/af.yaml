@@ -88,6 +88,7 @@ gateway:
     not_enough:            "Nie genoeg gesprek om saam te pers nie (ten minste 4 boodskappe nodig)."
     no_provider:           "Geen verskaffer opgestel nie -- kan nie saampers nie."
     nothing_to_do:         "Niks om saam te pers nie (die transkripsie is steeds heeltemal beskermde konteks)."
+    aggressive_unsupported: "--aggressive word nie ondersteun nie; gebruik '/compress here [N]' om net onlangse uitruilings te behou, of /undo om beurte te verwyder."
     focus_line:            "Fokus: \"{topic}\""
     summary_failed:        "⚠️ Opsomming kon nie gegenereer word nie ({error}). {count} historiese boodskap(pe) is verwyder en met 'n plekhouer vervang; vroeëre konteks kan nie meer herstel word nie. Oorweeg om jou auxiliary.compression-modelopstelling na te gaan."
     aborted:               "⚠️ Kompressie gestaak ({error}). Geen boodskappe is laat val nie — die gesprek is onveranderd. Voer /compress uit om weer te probeer, /reset vir 'n skoon sessie, of kyk na jou auxiliary.compression-modelkonfigurasie."
@@ -149,6 +150,15 @@ gateway:
     subscribed_suffix:     "(ingeteken — jy sal in kennis gestel word wanneer {task_id} voltooi of vasval)"
     truncated_suffix:      "… (afgekap; gebruik `hermes kanban …` in jou terminale vir volle uitvoer)"
     no_output:             "(geen uitvoer)"
+    wake:
+      completed:           "completed"
+      gave_up:             "gave up (retries exhausted)"
+      crashed:             "crashed (worker exited); dispatcher will retry"
+      timed_out:           "timed out; dispatcher will retry"
+      blocked:             "blocked; needs attention"
+      status_default:      "status changed"
+      status_joiner:       ", "
+      message:             "[kanban] Task {task_id} {status}.\nTitle: {title}\nAssignee: @{assignee}\nBoard: {board}\n\nCheck the result or decide the next step."
 
   personality:
     none_configured:       "Geen persoonlikhede opgestel in `{path}/config.yaml` nie"
@@ -227,6 +237,7 @@ gateway:
     matrix_blocked_other_room: "⚠️ Matrix /resume blocked: that session belongs to a different Matrix room ({room}). Use `/resume --cross-room {name}` if you intentionally want to resume it here."
     matrix_cross_room_success: "⚠️ Cross-room resume: resumed **{title}** inside Matrix room **{room}**.
       Future messages in this room will use that transcript until `/reset` or another `/resume`.{msg_part}"
+    blocked_not_owner:     "⚠️ /resume blocked: '**{name}**' belongs to a different user or chat. You can only resume sessions from this chat."
     no_named_sessions:     "Geen benoemde sessies gevind nie.\nGebruik `/title My Sessie` om jou huidige sessie 'n naam te gee, en dan `/resume My Sessie` om later daarheen terug te keer."
     list_header:           "📋 **Benoemde Sessies**\n"
     list_item:             "• **{title}**{preview_part}"
@@ -357,6 +368,7 @@ gateway:
     mode_new:              "⚙️ Gereedskap-vordering: **NUUT** — vertoon wanneer gereedskap verander (voorskoulengte: `display.tool_preview_length`, verstek 40)."
     mode_all:              "⚙️ Gereedskap-vordering: **ALMAL** — elke gereedskaps-oproep vertoon (voorskoulengte: `display.tool_preview_length`, verstek 40)."
     mode_verbose:          "⚙️ Gereedskap-vordering: **OMSLAGTIG** — elke gereedskaps-oproep met volle argumente."
+    mode_log:              "⚙️ Gereedskap-vordering: **LOG** — stil in die klets; gereedskaps-oproepe word na ~/.hermes/logs/tool_calls.log geskryf."
     saved_suffix:          "_(gestoor vir **{platform}** — neem effek by die volgende boodskap)_"
     save_failed:           "_(kon nie in konfigurasie stoor nie: {error})_"
 
@@ -391,6 +403,7 @@ gateway:
   restart_success: ♻ Gateway restarted successfully. Your session continues.
   gateway_online: ♻️ Gateway online — Hermes is back and ready.
   subagent_working: ⏳ Subagent working{status_detail} — your message is queued for when it finishes (use /stop to cancel everything).
+  context_compressing: ⏳ Compressing context{status_detail} — your message is queued for when it finishes (use /stop to cancel everything).
   queued_next_turn: ⏳ Queued for the next turn{status_detail}. I'll respond once the current task finishes.
   interrupting_task: ⚡ Interrupting current task{status_detail}. I'll respond to your message shortly.
   steered_into_run: ⏩ Steered into current run{status_detail}. Your message arrives after the next tool call.
@@ -442,11 +455,11 @@ gateway:
   empty_response_no_content: ❌ Model returned no content after all retries and fallback attempts.
   empty_response_no_content_no_fallback: ❌ Model returned no content after all retries. No fallback providers configured.
   thinking_prefill_retry: ↻ Thinking-only response — prefilling to continue ({n}/2)
-  kanban_done: ✔ {tag}Kanban {task_id} done — {title}{handoff}
-  kanban_blocked: ⏸ {tag}Kanban {task_id} blocked{reason}
-  kanban_gave_up: ✖ {tag}Kanban {task_id} gave up after repeated spawn failures{err}
-  kanban_crashed: ✖ {tag}Kanban {task_id} worker crashed (pid gone); dispatcher will retry
-  kanban_timed_out: ⏱ {tag}Kanban {task_id} timed out (max_runtime={limit}s); will retry
+  kanban_done: ✔ {board_tag}{tag}Kanban {task_id} done — {title}{handoff}
+  kanban_blocked: ⏸ {board_tag}{tag}Kanban {task_id} blocked{reason}
+  kanban_gave_up: ✖ {board_tag}{tag}Kanban {task_id} gave up after repeated spawn failures{err}
+  kanban_crashed: ✖ {board_tag}{tag}Kanban {task_id} worker crashed (pid gone); dispatcher will retry
+  kanban_timed_out: ⏱ {board_tag}{tag}Kanban {task_id} timed out (max_runtime={limit}s); will retry
   busy_queued_drain: ⏳ Gateway {gerund} — queued for the next turn after it comes back.
   busy_not_accepting_turn: ⏳ Gateway is {gerund} and is not accepting another turn right now.
   busy_not_accepting_work: ⏳ Gateway is {gerund} and is not accepting new work right now.

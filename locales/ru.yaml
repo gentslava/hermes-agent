@@ -88,6 +88,7 @@ gateway:
     not_enough:            "Недостаточно беседы для сжатия (нужно минимум 4 сообщения)."
     no_provider:           "Провайдер не настроен — сжатие невозможно."
     nothing_to_do:         "Пока нечего сжимать (стенограмма всё ещё полностью является защищённым контекстом)."
+    aggressive_unsupported: "--aggressive не поддерживается; используйте '/compress here [N]', чтобы сохранить только недавние обмены, или /undo, чтобы удалить ходы."
     focus_line:            "Фокус: \"{topic}\""
     summary_failed:        "⚠️ Не удалось сгенерировать сводку ({error}). {count} историч. сообщений было удалено и заменено заполнителем; предыдущий контекст больше нельзя восстановить. Проверьте конфигурацию модели auxiliary.compression."
     aborted:               "⚠️ Сжатие прервано ({error}). Сообщения не были удалены — разговор не изменился. Запустите /compress для повторной попытки, /reset для новой сессии или проверьте конфигурацию модели auxiliary.compression."
@@ -149,6 +150,15 @@ gateway:
     subscribed_suffix:     "(подписка оформлена — вы получите уведомление, когда {task_id} завершится или будет заблокирован)"
     truncated_suffix:      "… (сокращено; используйте `hermes kanban …` в терминале для полного вывода)"
     no_output:             "(нет вывода)"
+    wake:
+      completed:           "completed"
+      gave_up:             "gave up (retries exhausted)"
+      crashed:             "crashed (worker exited); dispatcher will retry"
+      timed_out:           "timed out; dispatcher will retry"
+      blocked:             "blocked; needs attention"
+      status_default:      "status changed"
+      status_joiner:       ", "
+      message:             "[kanban] Task {task_id} {status}.\nTitle: {title}\nAssignee: @{assignee}\nBoard: {board}\n\nCheck the result or decide the next step."
 
   personality:
     none_configured:       "В `{path}/config.yaml` не настроено ни одной личности"
@@ -227,6 +237,7 @@ gateway:
     matrix_blocked_other_room: "⚠️ Matrix /resume blocked: that session belongs to a different Matrix room ({room}). Use `/resume --cross-room {name}` if you intentionally want to resume it here."
     matrix_cross_room_success: "⚠️ Cross-room resume: resumed **{title}** inside Matrix room **{room}**.
       Future messages in this room will use that transcript until `/reset` or another `/resume`.{msg_part}"
+    blocked_not_owner:     "⚠️ /resume blocked: '**{name}**' belongs to a different user or chat. You can only resume sessions from this chat."
     no_named_sessions:     "Именованных сеансов не найдено.\nИспользуйте `/title Мой сеанс`, чтобы назвать текущий сеанс, затем `/resume Мой сеанс`, чтобы вернуться к нему позже."
     list_header:           "📋 **Именованные сеансы**\n"
     list_item:             "• **{title}**{preview_part}"
@@ -357,6 +368,7 @@ gateway:
     mode_new:              "⚙️ Прогресс инструментов: **NEW** — показывается при смене инструмента (длина предпросмотра: `display.tool_preview_length`, по умолчанию 40)."
     mode_all:              "⚙️ Прогресс инструментов: **ALL** — показывается каждый вызов инструмента (длина предпросмотра: `display.tool_preview_length`, по умолчанию 40)."
     mode_verbose:          "⚙️ Прогресс инструментов: **VERBOSE** — каждый вызов инструмента с полными аргументами."
+    mode_log:              "⚙️ Прогресс инструментов: **LOG** — тихо в чате; вызовы инструментов записываются в ~/.hermes/logs/tool_calls.log."
     saved_suffix:          "_(сохранено для **{platform}** — вступит в силу со следующего сообщения)_"
     save_failed:           "_(не удалось сохранить в конфигурацию: {error})_"
 
@@ -391,6 +403,7 @@ gateway:
   restart_success: ♻ Gateway перезапущен. Сессия продолжается.
   gateway_online: ♻️ Gateway снова онлайн — Hermes снова в строю.
   subagent_working: ⏳ Подагент работает{status_detail} — ваше сообщение в очереди и будет обработано после завершения (используйте /stop, чтобы отменить всё).
+  context_compressing: ⏳ Compressing context{status_detail} — your message is queued for when it finishes (use /stop to cancel everything).
   queued_next_turn: ⏳ В очереди на следующий ход{status_detail}. Отвечу, как только завершится текущая задача.
   interrupting_task: ⚡ Прерываю текущую задачу{status_detail}. Скоро отвечу на ваше сообщение.
   steered_into_run: ⏩ Влито в текущий запуск{status_detail}. Ваше сообщение поступит после следующего вызова инструмента.
@@ -442,11 +455,11 @@ gateway:
   empty_response_no_content: ❌ Модель не вернула контент после всех попыток и резервных вариантов.
   empty_response_no_content_no_fallback: ❌ Модель не вернула контент после всех попыток. Резервные провайдеры не настроены.
   thinking_prefill_retry: ↻ Ответ только с рассуждением — добавляю префикс для продолжения ({n}/2)
-  kanban_done: ✔ {tag}Kanban {task_id} завершён — {title}{handoff}
-  kanban_blocked: ⏸ {tag}Kanban {task_id} заблокирован{reason}
-  kanban_gave_up: ✖ {tag}Kanban {task_id} отказался после многократных ошибок запуска{err}
-  kanban_crashed: ✖ {tag}Kanban {task_id} воркер упал (pid исчез); диспетчер повторит попытку
-  kanban_timed_out: ⏱ {tag}Kanban {task_id} истекло время ожидания (max_runtime={limit}с); будет повторено
+  kanban_done: ✔ {board_tag}{tag}Kanban {task_id} завершён — {title}{handoff}
+  kanban_blocked: ⏸ {board_tag}{tag}Kanban {task_id} заблокирован{reason}
+  kanban_gave_up: ✖ {board_tag}{tag}Kanban {task_id} отказался после многократных ошибок запуска{err}
+  kanban_crashed: ✖ {board_tag}{tag}Kanban {task_id} воркер упал (pid исчез); диспетчер повторит попытку
+  kanban_timed_out: ⏱ {board_tag}{tag}Kanban {task_id} истекло время ожидания (max_runtime={limit}с); будет повторено
   busy_queued_drain: ⏳ Gateway {gerund} — в очереди на следующий ход после возобновления.
   busy_not_accepting_turn: ⏳ Gateway {gerund} и не принимает ещё один ход прямо сейчас.
   busy_not_accepting_work: ⏳ Gateway {gerund} и не принимает новую работу прямо сейчас.

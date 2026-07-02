@@ -88,6 +88,7 @@ gateway:
     not_enough:            "對話內容不足，無法壓縮（至少需要 4 則訊息）。"
     no_provider:           "未設定提供方 — 無法壓縮。"
     nothing_to_do:         "目前沒有可壓縮的內容（對話記錄仍全部為受保護的上下文）。"
+    aggressive_unsupported: "不支援 --aggressive；請使用 '/compress here [N]' 只保留最近的對話，或使用 /undo 刪除回合。"
     focus_line:            "聚焦：\"{topic}\""
     summary_failed:        "⚠️ 摘要產生失敗（{error}）。{count} 則歷史訊息已被移除並以佔位符取代；先前的上下文已無法復原。建議檢查 auxiliary.compression 模型設定。"
     aborted:               "⚠️ 壓縮已中止 ({error})。未刪除任何訊息 — 對話保持不變。執行 /compress 重試，執行 /reset 開始新工作階段，或檢查你的 auxiliary.compression 模型設定。"
@@ -149,6 +150,15 @@ gateway:
     subscribed_suffix:     "（已訂閱 — 當 {task_id} 完成或被封鎖時將通知您）"
     truncated_suffix:      "…（已截斷；如需完整輸出請在終端機執行 `hermes kanban …`）"
     no_output:             "（無輸出）"
+    wake:
+      completed:           "completed"
+      gave_up:             "gave up (retries exhausted)"
+      crashed:             "crashed (worker exited); dispatcher will retry"
+      timed_out:           "timed out; dispatcher will retry"
+      blocked:             "blocked; needs attention"
+      status_default:      "status changed"
+      status_joiner:       ", "
+      message:             "[kanban] Task {task_id} {status}.\nTitle: {title}\nAssignee: @{assignee}\nBoard: {board}\n\nCheck the result or decide the next step."
 
   personality:
     none_configured:       "`{path}/config.yaml` 中未設定人格"
@@ -227,6 +237,7 @@ gateway:
     matrix_blocked_other_room: "⚠️ Matrix /resume blocked: that session belongs to a different Matrix room ({room}). Use `/resume --cross-room {name}` if you intentionally want to resume it here."
     matrix_cross_room_success: "⚠️ Cross-room resume: resumed **{title}** inside Matrix room **{room}**.
       Future messages in this room will use that transcript until `/reset` or another `/resume`.{msg_part}"
+    blocked_not_owner:     "⚠️ /resume blocked: '**{name}**' belongs to a different user or chat. You can only resume sessions from this chat."
     no_named_sessions:     "找不到已命名的工作階段。\n使用 `/title 我的工作階段` 為目前工作階段命名，然後使用 `/resume 我的工作階段` 返回。"
     list_header:           "📋 **已命名工作階段**\n"
     list_item:             "• **{title}**{preview_part}"
@@ -357,6 +368,7 @@ gateway:
     mode_new:              "⚙️ 工具進度：**NEW** — 工具變更時顯示（預覽長度：`display.tool_preview_length`，預設 40）。"
     mode_all:              "⚙️ 工具進度：**ALL** — 顯示每次工具呼叫（預覽長度：`display.tool_preview_length`，預設 40）。"
     mode_verbose:          "⚙️ 工具進度：**VERBOSE** — 顯示每次工具呼叫及完整參數。"
+    mode_log:              "⚙️ 工具進度：**LOG** — 聊天中保持靜默；工具呼叫寫入 ~/.hermes/logs/tool_calls.log。"
     saved_suffix:          "_（已為 **{platform}** 儲存 — 下一則訊息生效）_"
     save_failed:           "_（無法儲存到設定：{error}）_"
 
@@ -391,6 +403,7 @@ gateway:
   restart_success: ♻ Gateway restarted successfully. Your session continues.
   gateway_online: ♻️ Gateway online — Hermes is back and ready.
   subagent_working: ⏳ Subagent working{status_detail} — your message is queued for when it finishes (use /stop to cancel everything).
+  context_compressing: ⏳ Compressing context{status_detail} — your message is queued for when it finishes (use /stop to cancel everything).
   queued_next_turn: ⏳ Queued for the next turn{status_detail}. I'll respond once the current task finishes.
   interrupting_task: ⚡ Interrupting current task{status_detail}. I'll respond to your message shortly.
   steered_into_run: ⏩ Steered into current run{status_detail}. Your message arrives after the next tool call.
@@ -442,11 +455,11 @@ gateway:
   empty_response_no_content: ❌ Model returned no content after all retries and fallback attempts.
   empty_response_no_content_no_fallback: ❌ Model returned no content after all retries. No fallback providers configured.
   thinking_prefill_retry: ↻ Thinking-only response — prefilling to continue ({n}/2)
-  kanban_done: ✔ {tag}Kanban {task_id} done — {title}{handoff}
-  kanban_blocked: ⏸ {tag}Kanban {task_id} blocked{reason}
-  kanban_gave_up: ✖ {tag}Kanban {task_id} gave up after repeated spawn failures{err}
-  kanban_crashed: ✖ {tag}Kanban {task_id} worker crashed (pid gone); dispatcher will retry
-  kanban_timed_out: ⏱ {tag}Kanban {task_id} timed out (max_runtime={limit}s); will retry
+  kanban_done: ✔ {board_tag}{tag}Kanban {task_id} done — {title}{handoff}
+  kanban_blocked: ⏸ {board_tag}{tag}Kanban {task_id} blocked{reason}
+  kanban_gave_up: ✖ {board_tag}{tag}Kanban {task_id} gave up after repeated spawn failures{err}
+  kanban_crashed: ✖ {board_tag}{tag}Kanban {task_id} worker crashed (pid gone); dispatcher will retry
+  kanban_timed_out: ⏱ {board_tag}{tag}Kanban {task_id} timed out (max_runtime={limit}s); will retry
   busy_queued_drain: ⏳ Gateway {gerund} — queued for the next turn after it comes back.
   busy_not_accepting_turn: ⏳ Gateway is {gerund} and is not accepting another turn right now.
   busy_not_accepting_work: ⏳ Gateway is {gerund} and is not accepting new work right now.
